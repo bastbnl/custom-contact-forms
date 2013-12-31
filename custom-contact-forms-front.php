@@ -11,11 +11,12 @@ if (!class_exists('CustomContactFormsFront')) {
 		var $form_uploads = array();
 		var $current_form;
 		var $current_thank_you_message;
+		var $message_compose_filter_label = 'ccf_customhtml_compose_html_message';
 
 		function frontInit() {
 			$this->processForms();
 		}
-		
+
 		function includeDependencies() {
 			$admin_options = parent::getAdminOptions();
 			$include_defaults = false;
@@ -34,7 +35,7 @@ if (!class_exists('CustomContactFormsFront')) {
 						}
 					}
 				}
-				
+
 				if (!empty($active_forms)) {
 					$include_defaults = true;
 					if ($admin_options['enable_jquery'] == 1) {
@@ -54,7 +55,7 @@ if (!class_exists('CustomContactFormsFront')) {
 				$include_defaults = true;
 				$include_datepicker = true;
 			}
-			
+
 			if ($include_defaults) {
 				if ($admin_options['enable_jquery'] == 1) {
 					if ($include_datepicker) {
@@ -66,42 +67,42 @@ if (!class_exists('CustomContactFormsFront')) {
 				add_action('wp_print_styles', array(&$this, 'insertFrontEndStyles'), 1);
 			}
 		}
-	
+
 		function insertFrontEndStyles() {
             wp_register_style('CCFStandardsCSS', plugins_url() . '/custom-contact-forms/css/custom-contact-forms-standards.css');
            	wp_register_style('CCFFormsCSS', plugins_url() . '/custom-contact-forms/css/custom-contact-forms.css');
            	wp_enqueue_style('CCFStandardsCSS');
 			wp_enqueue_style('CCFFormsCSS');
 		}
-		
-		function insertFrontEndScripts() { 
+
+		function insertFrontEndScripts() {
 			wp_enqueue_script('jquery');
 			wp_enqueue_script('jquery-tools', plugins_url() . '/custom-contact-forms/js/jquery.tools.min.js');
 			wp_enqueue_script('ccf-main', plugins_url() . '/custom-contact-forms/js/custom-contact-forms.js', '1.0');
 		}
-		
+
 		function insertDatePickerScripts() {
 			wp_enqueue_script('jquery-ui-datepicker', plugins_url() . '/custom-contact-forms/js/jquery.ui.datepicker.js', array('jquery-ui-core', 'jquery-ui-widget'));
 			wp_enqueue_script('ccf-datepicker', plugins_url() . '/custom-contact-forms/js/custom-contact-forms-datepicker.js', '1.2');
 		}
-		
+
 		function insertDatePickerStyles() {
 			wp_register_style('ccf-jquery-ui', plugins_url() . '/custom-contact-forms/css/jquery-ui.css');
             wp_enqueue_style('ccf-jquery-ui');
 		}
-		
+
 		function setFormError($key, $message) {
 			$this->form_errors[$key] = $message;
 		}
-		
+
 		function getFormError($key) {
 			return $this->form_errors[$key];
 		}
-		
+
 		function getAllFormErrors() {
 			return $this->form_errors;
 		}
-		
+
 		function shortCodeToForm($atts) {
 			extract(shortcode_atts(array(
 				'form' => 0,
@@ -111,14 +112,14 @@ if (!class_exists('CustomContactFormsFront')) {
 			$admin_options = parent::getAdminOptions();
 			if ($admin_options['enable_form_access_manager'] == 1 && !$this->userCanViewForm($this_form))
 				return esc_html($admin_options['default_form_bad_permissions']);
-			
+
 			return $this->getFormCode($this_form);
 		}
-		
+
 		function emptyFormErrors() {
 			$this->form_errors = array();
 		}
-		
+
 		function contentFilter($content) {
 			// THIS NEEDS TO REPLACE THE SHORTCODE ONLY ONCE
 			$errors = $this->getAllFormErrors();
@@ -135,7 +136,7 @@ if (!class_exists('CustomContactFormsFront')) {
 			}
 			return $content;
 		}
-		
+
 		function insertFormSuccessCode() {
 			$admin_options = parent::getAdminOptions();
 			if ($this->current_form !== 0) {
@@ -164,12 +165,26 @@ if (!class_exists('CustomContactFormsFront')) {
                 	<a href="javascript:void(0)" class="close">&times;</a>
                 </div>
                 <p><?php echo esc_html($success_message); ?></p>
-                
+
             </div>
 
         <?php
 		}
-		
+
+		function insertFormStatus($form_status) {
+?>
+<div id="ccf-form-status" data-status-in-error="<?php echo $form_status ?>"></div>
+<?php
+		}
+
+		function insertFormErrorStatus() {
+			return $this->insertFormStatus("true");
+		}
+
+		function insertFormSuccessStatus() {
+			return $this->insertFormStatus("false");
+		}
+
 		function validEmail($email) {
 			if (!@preg_match("/^[^@]{1,64}@[^@]{1,255}$/", $email)) return false;
 			$email_array = explode("@", $email);
@@ -189,11 +204,11 @@ if (!class_exists('CustomContactFormsFront')) {
 			}
 			return true;
 		}
-		
+
 		function validWebsite($website) {
 			return preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $website);
 		}
-		
+
 		function getFormCode($form, $is_widget_form = false) {
 			ccf_utils::startSession();
 			if (empty($form)) return '';
@@ -306,7 +321,7 @@ if (!class_exists('CustomContactFormsFront')) {
 			$out .= '<input name="form_page" value="'.esc_url($_SERVER['REQUEST_URI']).'" type="hidden"'.$code_type.'>'."\n".'<input type="hidden" name="fid" value="'.esc_attr($form->id).'"'.$code_type.'>'."\n".$hiddens."\n".'<input type="submit" id="submit-' . esc_attr($form->id) . '-'.$form_key.'" class="submit" value="' . $submit_text . '" name="customcontactforms_submit"'.$code_type.'>';
 			if (!empty($add_reset)) $out .= $add_reset;
 			$out .= "\n" . '</form>';
-			
+
 			if ($form->form_style != 0) {
 				$no_border = array('', '0', '0px', '0%', '0pt', '0em');
 				$round_border = (!in_array($style->field_borderround, $no_border)) ? '-moz-border-radius:'.esc_attr($style->field_borderround).'; -khtml-border-radius:'.esc_attr($style->field_borderround).'; -webkit-border-radius:'.esc_attr($style->field_borderround).'; ' : '';
@@ -326,12 +341,12 @@ if (!class_exists('CustomContactFormsFront')) {
 				if (!empty($style->submit_background)) $form_styles .= '#' . $form_id . " .submit { background:url(" . esc_attr($style->submit_background) . ") " . esc_attr($style->submit_background_repeat) . " top left; border:0; }";
 				$form_styles .= '#' . $form_id . " .reset-button { color:#".esc_attr(parent::formatStyle($style->submit_fontcolor))."; width:".esc_attr($style->submit_width)."; height:".esc_attr($style->submit_height)."; font-size:".esc_attr($style->submit_fontsize)."; } \n";
 				$form_styles .= '#' . $form_id . " textarea { ".$round_border." color:#".esc_attr(parent::formatStyle($style->field_fontcolor))."; width:".esc_attr($style->textarea_width)."; margin:0; background-color:#".esc_attr(parent::formatStyle($style->textarea_backgroundcolor))."; font-family:".esc_attr($style->form_fontfamily)."; height:".esc_attr($style->textarea_height)."; font-size:".esc_attr($style->field_fontsize)."; border:1px ".esc_attr($style->field_borderstyle)." #".esc_attr(parent::formatStyle($style->field_bordercolor))."; } \n";
-				$form_styles .= '.ccf-tooltip { background-color:#'.esc_attr(parent::formatStyle($style->tooltip_backgroundcolor)).'; font-family:'.esc_attr($style->form_fontfamily).'; font-color:#'.esc_attr(parent::formatStyle($style->tooltip_fontcolor)).'; font-size:'.esc_attr($style->tooltip_fontsize).'; }' . "\n"; 
+				$form_styles .= '.ccf-tooltip { background-color:#'.esc_attr(parent::formatStyle($style->tooltip_backgroundcolor)).'; font-family:'.esc_attr($style->form_fontfamily).'; font-color:#'.esc_attr(parent::formatStyle($style->tooltip_fontcolor)).'; font-size:'.esc_attr($style->tooltip_fontsize).'; }' . "\n";
 				$form_styles .= '</style>' . "\n";
 			}
 			return $form_styles . $out;
 		}
-		
+
 		function requiredFieldsArrayFromList($list) {
 			if (empty($list)) return array();
 			$list = str_replace(' ', '', $list);
@@ -341,7 +356,7 @@ if (!class_exists('CustomContactFormsFront')) {
 			}
 			return $array;
 		}
-		
+
 		function processFileUpload($field) {
 			$errors = array();
 			if (empty($_FILES[$field->field_slug])) $errors[] = __('An error occured while uploading: ', 'custom-contact-forms') . $field->field_slug;
@@ -352,13 +367,13 @@ if (!class_exists('CustomContactFormsFront')) {
 			if (!empty($allowed_exts))
 				if (!in_array($ext, $allowed_exts)) $errors[] = '.' . $ext . __(' is an invalid file extension.', 'custom-contact-forms');
 			if (!empty($errors)) return $errors;
-			
+
 			// create necessary directories
 			if (!is_dir(ABSPATH."wp-content/plugins/custom-contact-forms/uploads/".date("Y")))
 				mkdir(ABSPATH."wp-content/plugins/custom-contact-forms/uploads/".date("Y"));
 			if (!is_dir(ABSPATH . "wp-content/plugins/custom-contact-forms/uploads/".date("Y")."/".date("m")))
 				mkdir(ABSPATH . "wp-content/plugins/custom-contact-forms/uploads/".date("Y")."/".date("m"));
-			
+
 			// check if file already exists
 			$file_name = preg_replace('/(.*)\..*/i', '$1', basename($_FILES[$field->field_slug]['name']));
 			$file_name_addon = ".";
@@ -375,7 +390,7 @@ if (!class_exists('CustomContactFormsFront')) {
 			}
 			return $errors;
 		}
-		
+
 		function processForms() {
 			if (isset($_POST['ccf_customhtml']) || isset($_POST['customcontactforms_submit'])) {
 				// BEGIN define common language vars
@@ -386,29 +401,45 @@ if (!class_exists('CustomContactFormsFront')) {
 				// END define common language vars
 			} if (isset($_POST['ccf_customhtml'])) {
 				$admin_options = parent::getAdminOptions();
-				$fixed_customhtml_fields = array('required_fields', 'success_message', 'thank_you_page', 'destination_email', 'ccf_customhtml');
+				$fixed_customhtml_fields = array('required_fields', 'success_message', 'thank_you_page', 'ccf_customhtml');
 				$req_fields = $this->requiredFieldsArrayFromList($_POST['required_fields']);
 				$req_fields = array_map('trim', $req_fields);
 				$body = '';
+				// bastb 2013-12-28 Added a filter to allow for another custom message body
+				$has_filter = FALSE !== has_filter($this->message_compose_filter_label);
 				foreach ($_POST as $key => $value) {
 					if (!in_array($key, $fixed_customhtml_fields)) {
 						if (in_array($key, $req_fields) && !empty($value)) {
 							unset($req_fields[array_search($key, $req_fields)]);
 						}
-						$body .= ucwords(str_replace('_', ' ', htmlspecialchars($key))) . ': ' . htmlspecialchars($value) . "<br /><br />\n";
+						if (! $has_filter) {
+							$body .= ucwords(str_replace('_', ' ', htmlspecialchars($key))) . ': ' . htmlspecialchars($value) . "<br /><br />\n";
+						}
 						$data_array[$key] = $value;
 					}
-				} foreach($req_fields as $err)
+				}
+
+				if ($has_filter) {
+					$body = apply_filters($this->message_compose_filter_label, $body, $_POST);
+				}
+
+				foreach($req_fields as $err)
 					$this->setFormError($err, $lang['field_blank'] . '"' . $err . '"');
+
 				$errors = $this->getAllFormErrors();
+
 				if (empty($errors)) {
 					ccf_utils::load_module('export/custom-contact-forms-user-data.php');
 					$data_object = new CustomContactFormsUserData(array('data_array' => $data_array, 'form_page' => $_SERVER['SERVER_NAME']. $_SERVER['REQUEST_URI'], 'form_id' => 0, 'data_time' => time()));
 					parent::insertUserData($data_object);
-					$body .= "<br />\n" . htmlspecialchars($lang['form_page']) . $_SERVER['SERVER_NAME']. $_SERVER['REQUEST_URI'] . "<br />\n" . $lang['sender_ip'] . $_SERVER['REMOTE_ADDR'] . "<br />\n";
+
+					if (! $has_filter) {
+						$body .= "<br />\n" . htmlspecialchars($lang['form_page']) . $_SERVER['SERVER_NAME']. $_SERVER['REQUEST_URI'] . "<br />\n" . $lang['sender_ip'] . $_SERVER['REMOTE_ADDR'] . "<br />\n";
+					}
+
 					if ($admin_options['email_form_submissions'] == 1) {
 						if (!class_exists('PHPMailer'))
-							require_once(ABSPATH . "wp-includes/class-phpmailer.php"); 
+							require_once(ABSPATH . "wp-includes/class-phpmailer.php");
 						$mail = new PHPMailer();
 						$mail->MailerDebug = false;
 						if ($admin_options['mail_function'] == 'smtp') {
@@ -422,8 +453,12 @@ if (!class_exists('CustomContactFormsFront')) {
 							} else
 								$mail->SMTPAuth = false;
 						}
-						$mail->From = $admin_options['default_from_email'];
-						$mail->FromName = 'Custom Contact Forms';
+						// Use the submitter email and name as the from address
+						// See http://stackoverflow.com/a/13170221 for more info on the gmail reply function
+						$domain = parse_url(site_url());
+						$mail->From = $data_array['rc_person_email'];
+						$mail->FromName = $data_array['rc_person_name'] . ' via ' . $domain['host'];
+						$mail->addReplyTo($data_array['rc_person_email']);
 						$dest_email_array = $this->getDestinationEmailArray($_POST['destination_email']);
 						if (empty($dest_email_array)) $mail->AddAddress($admin_options['default_to_email']);
 						else {
@@ -439,7 +474,10 @@ if (!class_exists('CustomContactFormsFront')) {
 					}
 					$this->current_thank_you_message = (!empty($_POST['success_message'])) ? $_POST['success_message'] : $admin_options['form_success_message'];
 					$this->current_form = 0;
-					add_action('wp_footer', array(&$this, 'insertFormSuccessCode'), 1);
+					add_action('wp_footer', array(&$this, 'insertFormSuccessStatus'), 1);
+				}
+				else {
+					add_action('wp_footer', array(&$this, 'insertFormErrorStatus'), 1);
 				}
 				unset($_POST);
 			} elseif (isset($_POST['customcontactforms_submit'])) {
@@ -469,15 +507,15 @@ if (!class_exists('CustomContactFormsFront')) {
 						}
 					} elseif ( $field->field_slug == 'recaptcha' ) {
 						require_once( CCF_BASE_PATH . 'modules/recaptcha/recaptchalib.php' );
-						
+
 						$resp = recaptcha_check_answer( $admin_options['recaptcha_private_key'], $_SERVER['REMOTE_ADDR'], $_POST['recaptcha_challenge_field'], $_POST['recaptcha_response_field'] );
-						
+
 						if ( ! $resp->is_valid ) {
 							if ( empty( $field->field_error ) )
 								$this->setFormError( 'recaptcha', __( 'You copied the text from the captcha field incorrectly.', 'custom-contact-forms' ) );
 							else $this->setFormError( 'recaptcha', $field->field_error );
 						}
-						
+
 					} elseif ($field->field_slug == 'fixedEmail' && $field->field_required == 1 && !empty($_POST['fixedEmail'])) {
 						if (!$this->validEmail($_POST['fixedEmail'])) {
 							if (empty($field->field_error))
@@ -522,7 +560,7 @@ if (!class_exists('CustomContactFormsFront')) {
 						}
 					} if ($field->field_type == 'Checkbox')
 						$checks[] = $field->field_slug;
-				} 
+				}
 				$body = '';
 				$data_array = array();
 				foreach ($_POST as $key => $value) {
@@ -534,7 +572,7 @@ if (!class_exists('CustomContactFormsFront')) {
 						$mail_field_label = (empty($field->field_label)) ? $field->field_slug : $field->field_label;
 						$body .= htmlspecialchars($mail_field_label) . ' - ' . htmlspecialchars($val2) . "<br />\n";
 						$data_array[$key] = $value;
-						
+
 					} if (in_array($key, $checks)) {
 						$checks_key = array_search($key, $checks);
 						unset($checks[$checks_key]);
@@ -558,7 +596,7 @@ if (!class_exists('CustomContactFormsFront')) {
 					if ($admin_options['email_form_submissions'] == '1') {
 						$body .= "<br />\n" . htmlspecialchars($lang['form_page']) . $_SERVER['SERVER_NAME'] . $_SERVER['REQUEST_URI'] . "<br />\n" . $lang['sender_ip'] . $_SERVER['REMOTE_ADDR'] . "<br />\n";
 						if (!class_exists('PHPMailer'))
-							require_once(ABSPATH . "wp-includes/class-phpmailer.php"); 
+							require_once(ABSPATH . "wp-includes/class-phpmailer.php");
 						$mail = new PHPMailer(false);
 						$mail->MailerDebug = false;
 						if ($admin_options['mail_function'] == 'smtp') {
@@ -604,7 +642,7 @@ if (!class_exists('CustomContactFormsFront')) {
 				$_POST = array();
 			}
 		}
-		
+
 		function getCaptchaCode($field_object, $form_id) {
 			$admin_options = parent::getAdminOptions();
 			$code_type = ($admin_options['code_type'] == 'XHTML') ? ' /' : '';
@@ -615,18 +653,18 @@ if (!class_exists('CustomContactFormsFront')) {
 				$instructions = 'title="'.$field_object->field_instructions.'"';
 				$tooltip_class = 'ccf-tooltip-field';
 			}
-			$out = '<img width="96" height="24" alt="' . __('Captcha image for Custom Contact Forms plugin. You must type the numbers shown in the image', 'custom-contact-forms') . '" id="captcha-image" src="' . get_bloginfo('wpurl') . '/wp-content/plugins/custom-contact-forms/image.php?fid='.$form_id.'"'.$code_type.'> 
+			$out = '<img width="96" height="24" alt="' . __('Captcha image for Custom Contact Forms plugin. You must type the numbers shown in the image', 'custom-contact-forms') . '" id="captcha-image" src="' . get_bloginfo('wpurl') . '/wp-content/plugins/custom-contact-forms/image.php?fid='.$form_id.'"'.$code_type.'>
 			<div><label for="captcha'.$form_id.'">* '.$field_object->field_label.'</label> <input class="'.$field_object->field_class.' '.$tooltip_class.'" type="text" '.$instructions.' name="captcha" id="captcha'.$form_id.'" maxlength="20"'.$code_type.'></div>';
 			return $out;
 		}
-		
+
 		function getReCaptchaCode( $field_object, $form_id ) {
 			ccf_utils::load_module( 'extra_fields/recaptcha_field.php' );
 			$admin_options = parent::getAdminOptions();
 			$recaptcha_field = new ccf_recaptcha_field( $admin_options['recaptcha_public_key'], $field_object->field_label, $field_object->field_slug, $field_object->field_class, $field_object->field_value, $field_object->field_instructions );
 			return "\n" . $recaptcha_field->getCode();
 		}
-		
+
 		function getIsHumanCode($field_object, $form_id) {
 			$admin_options = parent::getAdminOptions();
 			$code_type = ($admin_options['code_type'] == 'XHTML') ? ' /' : '';
@@ -641,7 +679,7 @@ if (!class_exists('CustomContactFormsFront')) {
 			<div><input value="1" class="'.$field_object->field_class.' '.$tooltip_class.'" type="checkbox" '.$instructions.' name="ishuman" id="ishuman-'.$form_id.'"'.$code_type.'> <label for="ishuman-'.$form_id.'" class="checkbox">* '.$field_object->field_label.'</label></div>';
 			return $out;
 		}
-		
+
 		function userCanViewForm($form_object) {
 			if (is_user_logged_in()) {
 				global $current_user;
@@ -652,28 +690,28 @@ if (!class_exists('CustomContactFormsFront')) {
 			$form_access_array = parent::getFormAccessArray($form_object->form_access);
 			return parent::formHasRole($form_access_array, $user_role);
 		}
-		
+
 		function getStatesCode($field_object, $form_id) {
 			ccf_utils::load_module('extra_fields/states_field.php');
 			$req = ($field_object->field_required == 1) ? '* ' : '';
 			$states_field = new ccf_states_field($field_object->field_class, $form_id, $field_object->field_value, $field_object->field_instructions);
 			return "\n".'<label for="'.ccf_utils::decodeOption($field_object->field_slug, 1, 1).'">'. $req .ccf_utils::decodeOption($field_object->field_label, 1, 1).'</label>'.$states_field->getCode();
 		}
-		
+
 		function getDatePickerCode($field_object, $form_id, $xhtml_code) {
 			ccf_utils::load_module('extra_fields/date_field.php');
 			$req = ($field_object->field_required == 1) ? '* ' : '';
 			$date_field = new ccf_date_field($field_object->field_class, $form_id, $field_object->field_value, $field_object->field_instructions, $xhtml_code);
 			return "\n".'<label for="'.ccf_utils::decodeOption($field_object->field_slug, 1, 1).'">'. $req .ccf_utils::decodeOption($field_object->field_label, 1, 1).'</label>'.$date_field->getCode();
 		}
-		
+
 		function getCountriesCode($field_object, $form_id) {
 			ccf_utils::load_module('extra_fields/countries_field.php');
 			$req = ($field_object->field_required == 1) ? '* ' : '';
 			$countries_field = new ccf_countries_field($field_object->field_class, $form_id, $field_object->field_value, $field_object->field_instructions);
 			return '<label for="'.ccf_utils::decodeOption($field_object->field_slug, 1, 1).'">'. $req .ccf_utils::decodeOption($field_object->field_label, 1, 1).'</label>' . "\n" . $countries_field->getCode();
 		}
-		
+
 		function getDestinationEmailArray($str) {
 			$str = str_replace(',', ';', $str);
 			$email_array = explode(';', $str);
